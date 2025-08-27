@@ -2,6 +2,7 @@
 
 from documents import VirtualFileSystem
 
+
 def cmd_mount(args, vfs):
     """Mount an XML/HTML document at a given name."""
     if len(args) != 2:
@@ -14,6 +15,7 @@ def cmd_mount(args, vfs):
     except Exception as e:
         return f"Error mounting: {e}"
 
+
 def cmd_ls(args, vfs):
     """List child nodes of the current or specified path."""
     path = args[0] if args else None
@@ -21,6 +23,7 @@ def cmd_ls(args, vfs):
         return vfs.ls(path)
     except Exception as e:
         return f"Error: {e}"
+
 
 def cmd_cd(args, vfs):
     """Change current working node to a specified path."""
@@ -33,6 +36,7 @@ def cmd_cd(args, vfs):
     except Exception as e:
         return f"Error: {e}"
 
+
 def cmd_tree(args, context):
     """Pretty print the subtree from the current working node."""
     if context.cwd is None:
@@ -40,6 +44,7 @@ def cmd_tree(args, context):
     
     print_tree(context.cwd)
     return ""  # Or return None
+
 
 def print_tree(element, prefix="", is_last=True):
     """Recursively print a visual tree structure of XML/HTML nodes."""
@@ -52,10 +57,25 @@ def print_tree(element, prefix="", is_last=True):
         new_prefix = prefix + ("    " if is_last else "│   ")
         print_tree(child, new_prefix, last)
 
+
+def cmd_unmount(args, vfs):
+    """Unmount a previously mounted document."""
+    if not args:
+        return "Usage: unmount <name>"
+    
+    name = args[0]
+    try:
+        vfs.unmount(name)
+        return f"Unmounted '{name}'"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 COMMANDS = {
     "mount": cmd_mount,
     "ls": cmd_ls,
     "cd": cmd_cd,
     "tree": cmd_tree,
+    "unmount": cmd_unmount,
 }
 

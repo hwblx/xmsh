@@ -1,7 +1,7 @@
 """Implements a virtual file system for navigating XML/HTML documents."""
 
 from lxml import etree, html
-import os
+
 
 class VirtualFileSystem:
     """Represents a virtual file system for XML/HTML tree navigation."""
@@ -13,76 +13,87 @@ class VirtualFileSystem:
 
     def mount(self, name, filepath):
         """Mount a file under the given name into the virtual file system."""
-        ext = os.path.splitext(filepath)[1].lower()
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        if ext in ('.html', '.htm'):
-            parsed_root = html.fromstring(content)
-        else:
-            parser = etree.XMLParser(recover=True)
-            parsed_root = etree.fromstring(content, parser=parser)
-
-        existing = self.root.find(name)
-        if existing is not None:
+        
+        if self.root.find(name) is not None:
             raise ValueError(f"Mount '{name}' already exists")
 
-        mount_wrapper = etree.SubElement(self.root, name)
-        mount_wrapper.append(parsed_root)
+        if filepath.lower().endswith('.html'):
+            parsed_root = html.parse(filepath).getroot()
+        elif filepath.lower().endswith('.xml'):
+            parsed_root = etree.parse(filepath).getroot()
+        else:
+            print("Only .html and .xml files are supported")
+
+        mount_point = etree.SubElement(self.root, name)
+        mount_point.append(parsed_root)
 
     def unmount(self, name):
         """Unmount a mounted document by name."""
         mount_node = self.root.find(name)
         if mount_node is None:
             raise ValueError(f"No such mount '{name}'")
-        self.root.remove(mount_node)
-        if self.is_ancestor(mount_node, self.cwd):
-            self.cwd = self.root
 
-    def is_ancestor(self, ancestor, node):
-        """Return True if ancestor is node or any of its parents."""
-        current = node
+        # Check if the current working node is under the mount being removed
+        current = self.cwd
         while current is not None:
-            if current == ancestor:
-                return True
+            if current == mount_node:
+                self.cwd = self.root
+                break
             current = current.getparent()
-        return False
+
+        self.root.remove(mount_node)
 
     def get_node_by_path(self, path):
-        """Resolve a path string to an element, supporting navigation features."""
+        """
+        Resolve a VFS path to an element node.
+        Supports:
+          - Absolute and relative paths
+          - Parent references (..)
+          - Indexed tags (e.g., div[2])
+        """
+
+        def split_path(p):
+            return p.strip('/').split('/')
+
+        def get_parent_or_error(node):
+            parent = node.getparent()
+            if parent is None:
+                raise ValueError("Already at root, cannot go up")
+            return parent
+
+        def parse_tag_with_index(part):
+            if '[' in part and part.endswith(']'):
+                tag = part[:part.index('[')]
+                try:
+                    index = int(part[part.index('[') + 1:-1])
+                except ValueError:
+                    raise ValueError(f"Invalid index in path segment '{part}'")
+            else:
+                tag = part
+                index = 1
+            return tag, index
+
+        def get_child_by_tag_and_index(node, tag, index):
+            matches = [c for c in node if c.tag == tag]
+            if index < 1 or index > len(matches):
+                raise ValueError(f"No such child '{tag}[{index}]' under '{node.tag}'")
+            return matches[index - 1]
+
+        # Main logic
         if not path or path == '.':
             return self.cwd
 
-        if path.startswith('/'):
-            current = self.root
-            parts = path.strip('/').split('/')
-        else:
-            current = self.cwd
-            parts = path.split('/')
+        current = self.root if path.startswith('/') else self.cwd
+        parts = split_path(path)
 
         for part in parts:
-            if part == '..':
-                parent = current.getparent()
-                if parent is None:
-                    raise ValueError("Already at root, cannot go up")
-                current = parent
-            elif part == '.' or part == '':
-                pass
+            if part in ('', '.'):
+                continue
+            elif part == '..':
+                current = get_parent_or_error(current)
             else:
-                if '[' in part and part.endswith(']'):
-                    tag = part[:part.index('[')]
-                    try:
-                        index = int(part[part.index('[')+1:-1])
-                    except:
-                        raise ValueError(f"Invalid index in path segment '{part}'")
-                else:
-                    tag = part
-                    index = 1
-
-                children = [c for c in current if c.tag == tag]
-                if len(children) < index or index < 1:
-                    raise ValueError(f"No such child '{part}' under '{current.tag}'")
-                current = children[index-1]
+                tag, index = parse_tag_with_index(part)
+                current = get_child_by_tag_and_index(current, tag, index)
 
         return current
 
@@ -94,38 +105,44 @@ class VirtualFileSystem:
         if not children:
             return "(empty)"
 
-        tag_counts = {}
-        lines = []
+        tags = {}
         for child in children:
-            tag_counts[child.tag] = tag_counts.get(child.tag, 0) + 1
+            tags[child.tag] = tags.get(child.tag, 0) + 1
 
-        tag_seen = {}
+        seen = {}
+        result = []
         for child in children:
-            count = tag_counts[child.tag]
-            tag_seen[child.tag] = tag_seen.get(child.tag, 0) + 1
-            if count > 1:
-                lines.append(f"{child.tag}[{tag_seen[child.tag]}]")
-            else:
-                lines.append(child.tag)
-        return ' '.join(lines)
+            tag = child.tag
+            seen[tag] = seen.get(tag, 0) + 1
+            count = tags[tag]
+            result.append(f"{tag}[{seen[tag]}]" if count > 1 else tag)
 
+        return ' '.join(result)
+    
     def build_path(self, node):
-        """Build a full path string from root to the given node."""
+        """Build path from root to node, showing indices for duplicate siblings."""
+
+        def tag_with_optional_index(n):
+            parent = n.getparent()
+            if parent is None:
+                return n.tag
+            siblings = [c for c in parent if c.tag == n.tag]
+            if len(siblings) > 1:
+                index = siblings.index(n) + 1
+                return f"{n.tag}[{index}]"
+            return n.tag
+
+        if node is None:
+            raise ValueError("Node is None")
+
+        if node == self.root:
+            return "/"
+
         parts = []
         current = node
 
         while current is not None and current != self.root:
-            parent = current.getparent()
-            if parent is None:
-                break
-            siblings = [c for c in parent if c.tag == current.tag]
-            if len(siblings) > 1:
-                index = siblings.index(current) + 1
-                parts.append(f"{current.tag}[{index}]")
-            else:
-                parts.append(current.tag)
-            current = parent
+            parts.append(tag_with_optional_index(current))
+            current = current.getparent()
 
-        parts.reverse()
-        return "/" + "/".join(parts) if parts else "/"
-
+        return "/" + "/".join(reversed(parts))
