@@ -10,9 +10,13 @@ def get_prompt(vfs):
     return f"{path}> "
 
 
-def main():
+def main(debug=False):
     """Main event loop for the CLI interface."""
     vfs = VirtualFileSystem()
+
+    if debug:
+        print(COMMANDS['mount'](('bf', '../data/bf.xml'), vfs))
+        print(COMMANDS['mount'](('hp', '../data/hp.html'), vfs))
 
     while True:
         prompt = get_prompt(vfs)
@@ -42,5 +46,5 @@ def main():
             print(result)
 
 if __name__ == "__main__":
-    main()
+    main(debug=True)
 

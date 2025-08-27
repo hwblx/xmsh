@@ -1,6 +1,9 @@
 """Implements a virtual file system for navigating XML/HTML documents."""
 
 from lxml import etree, html
+import requests
+from urllib.parse import urlparse
+
 
 
 class VirtualFileSystem:
@@ -146,3 +149,38 @@ class VirtualFileSystem:
             current = current.getparent()
 
         return "/" + "/".join(reversed(parts))
+
+    def mount_url(self, name, url):
+        """Mount an XML/HTML document from a URL under the given name."""
+
+        if self.root.find(name) is not None:
+            raise ValueError(f"Mount '{name}' already exists")
+
+        parsed = urlparse(url)
+        ext = parsed.path.lower().rsplit('.', 1)[-1]
+
+        if ext not in ('html', 'htm', 'xml'):
+            raise ValueError("Only .html, .htm and .xml URLs are supported")
+
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+        except Exception as e:
+            raise ValueError(f"Failed to fetch URL: {e}")
+
+        content = response.content
+
+        if ext in ('html', 'htm'):
+            parsed_root = html.fromstring(content)
+        else:  # xml
+            parser = etree.XMLParser(recover=True)
+            parsed_root = etree.fromstring(content, parser=parser)
+
+        mount_point = etree.SubElement(self.root, name)
+        mount_point.append(parsed_root)
+
+    def cp_node(self, src_node, dest_node):
+        """Copy src_node and append it to dest_node."""
+        new_node = etree.fromstring(etree.tostring(src_node))
+        dest_node.append(new_node)
+
