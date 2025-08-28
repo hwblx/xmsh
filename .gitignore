@@ -7,5 +7,5 @@ wheels/
 
 *.egg-info
 *.swp
-# Virtual environments
+test.xml
 .venv

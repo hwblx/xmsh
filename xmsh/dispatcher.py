@@ -78,18 +78,7 @@ def cmd_cd(args, vfs):
     except Exception as e:
         return f"Error: {e}"
 
-'''
-def cmd_cd(args, vfs):
-    """Change current working node to a specified path."""
-    if not args:
-        return "Usage: cd <path>"
-    path = args[0]
-    try:
-        new_cwd = vfs.get_node_by_path(path)
-        vfs.cwd = new_cwd
-    except Exception as e:
-        return f"Error: {e}"
-'''
+
 def cmd_tree(args, context):
     """Pretty print the subtree from the current working node, optionally folded at a depth."""
     if context.cwd is None:
@@ -185,28 +174,33 @@ def cmd_add(args, vfs):
 
 
 def cmd_rm(args, vfs):
-    """Remove a child element by tag and optional index."""
+    """Remove a node at the specified path (absolute or relative)."""
     if not args:
-        return "Usage: rm <tag>[index]"
+        return "Usage: rm <path>"
+
+    path = args[0]
 
     try:
-        tag_part = args[0]
-        if '[' in tag_part and tag_part.endswith(']'):
-            tag = tag_part[:tag_part.index('[')]
-            index = int(tag_part[tag_part.index('[') + 1:-1])
-        else:
-            tag = tag_part
-            index = 1
-
-        matches = [c for c in vfs.cwd if c.tag == tag]
-        if len(matches) < index or index < 1:
-            return f"No such child: {tag_part}"
-
-        to_remove = matches[index - 1]
-        vfs.cwd.remove(to_remove)
-        return f"Removed {tag_part} from {vfs.cwd.tag}"
+        target_node = vfs.get_node_by_path(path)
     except Exception as e:
-        return f"Error: {e}"
+        return f"Invalid path: {e}"
+
+    parent = target_node.getparent()
+    if parent is None or target_node == vfs.root:
+        return "Cannot remove root or a node without a parent"
+
+    # Disallow removing cwd or any of its ancestors
+    current = vfs.cwd
+    while current is not None:
+        if current == target_node:
+            return f"Cannot remove current directory or one of its ancestors: {vfs.build_path(target_node)}"
+        current = current.getparent()
+
+    try:
+        parent.remove(target_node)
+        return f"Removed <{target_node.tag}> from {vfs.build_path(parent)}"
+    except Exception as e:
+        return f"Error removing node: {e}"
 
 
 def cmd_rename(args, vfs):
@@ -249,22 +243,6 @@ def cmd_find(args, vfs):
     return '\n'.join(paths)
 
 
-def copy_element(src, dest, position='before'):
-    """Copy `src` node into `dest` at the specified position."""
-    new_element = deepcopy(src)
-
-    if position == 'before':
-        parent = dest.getparent()
-        if parent is None:
-            raise ValueError("Cannot insert before a node with no parent")
-        parent.insert(parent.index(dest), new_element)
-    elif position == 'append':
-        dest.append(new_element)
-    else:
-        raise ValueError("Invalid position")
-
-    return new_element
-
 def cmd_cp(args, vfs):
     """Copy a node to another location."""
     if len(args) != 2:
@@ -282,11 +260,19 @@ def cmd_cp(args, vfs):
     except Exception as e:
         return f"Error: target not found: {e}"
 
+    # Prevent copying into one of its own descendants
+    current = dest_node
+    while current is not None:
+        if current == src_node:
+            return "Cannot copy a node into one of its own descendants"
+        current = current.getparent()
+
     try:
         vfs.cp_node(src_node, dest_node)
         return f"Copied '{src_node.tag}' to '{vfs.build_path(dest_node)}'"
     except Exception as e:
         return f"Error copying: {e}"
+
 
 def cmd_mv(args, vfs):
     """
@@ -347,7 +333,14 @@ def cmd_mv(args, vfs):
         if src_node == target_node:
             return "Error: source and target are the same node"
 
-        # Avoid moving node into one of its own descendants
+        # Prevent moving cwd or its ancestors
+        current = vfs.cwd
+        while current is not None:
+            if current == src_node:
+                return f"Cannot move current directory or one of its ancestors: {vfs.build_path(src_node)}"
+            current = current.getparent()
+
+        # Prevent moving a node into one of its own descendants
         current = target_node
         while current is not None:
             if current == src_node:
@@ -360,6 +353,48 @@ def cmd_mv(args, vfs):
         target_node.append(src_node)
 
         return f"Moved '{src_node.tag}' as last child of '{target_node.tag}'"
+
+
+def cmd_save(args, vfs):
+    filepath = None
+    pretty = True
+    args_copy = args[:]
+
+    if '--raw' in args_copy:
+        pretty = False
+        args_copy.remove('--raw')
+
+    if args_copy:
+        filepath = args_copy[0]
+
+    try:
+        result = vfs.save(filepath, pretty=pretty)
+        return result
+    except Exception as e:
+        return f"Error saving: {e}"
+
+
+def cmd_print(args, vfs):
+    """Print the specified path (or current node if not given)."""
+
+    path = None
+    pretty = True
+
+    args_copy = args[:]
+
+    if '--raw' in args_copy:
+        pretty = False
+        args_copy.remove('--raw')
+
+    if args_copy:
+        path = args_copy[0]
+
+    try:
+        vfs.print(path, pretty=pretty)
+        return ""  # output already printed
+    except Exception as e:
+        return f"Error printing: {e}"
+
 
 COMMANDS = {
     "mount": cmd_mount,
@@ -375,5 +410,7 @@ COMMANDS = {
     "find": cmd_find,
     "cp": cmd_cp,
     "mv": cmd_mv,
+    "save": cmd_save,
+    "print": cmd_print,
 }
 

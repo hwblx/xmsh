@@ -1,9 +1,19 @@
 """Implements a virtual file system for navigating XML/HTML documents."""
 
-from lxml import etree, html
-import requests
+from copy import deepcopy
 from urllib.parse import urlparse
 
+from lxml import etree, html
+import requests
+
+try:
+    from rich.syntax import Syntax
+    from rich.console import Console
+    _has_rich = True
+    _console = Console()
+except ImportError:
+    _has_rich = False
+    _console = None
 
 
 class VirtualFileSystem:
@@ -13,6 +23,7 @@ class VirtualFileSystem:
         """Initialize the root element and set current working directory."""
         self.root = etree.Element("vfs-root")
         self.cwd = self.root  # current working directory node
+        self.mounts = {}
 
     def mount(self, name, filepath):
         """Mount a file under the given name into the virtual file system."""
@@ -29,6 +40,15 @@ class VirtualFileSystem:
 
         mount_point = etree.SubElement(self.root, name)
         mount_point.append(parsed_root)
+        self.mounts[name] = filepath
+
+    def get_mount_name_for_node(self, node):
+        current = node
+        while current is not None and current != self.root:
+            if current.getparent() == self.root:
+                return current.tag
+            current = current.getparent()
+        return None
 
     def unmount(self, name):
         """Unmount a mounted document by name."""
@@ -184,3 +204,81 @@ class VirtualFileSystem:
         new_node = etree.fromstring(etree.tostring(src_node))
         dest_node.append(new_node)
 
+    def save(self, filepath=None, pretty=True):
+        """
+        Save the XML document for the current mountpoint.
+
+        Args:
+            filepath (str or None): Optional path to save to; if None, saves to original mount file.
+            pretty (bool): Whether to pretty-print/indent the saved XML.
+        """
+        mount_name = self.get_mount_name_for_node(self.cwd)
+        if not mount_name:
+            raise ValueError("Cannot save: no mounted document above current node")
+
+        mount_node = self.root.find(mount_name)
+        if mount_node is None or len(mount_node) == 0:
+            raise ValueError(f"Mounted node '{mount_name}' is empty or invalid")
+
+        doc_root = mount_node[0]
+
+        if filepath is None:
+            filepath = self.mounts.get(mount_name)
+            if not filepath:
+                raise ValueError(f"No original filepath for mount '{mount_name}'")
+
+        # Deepcopy root to avoid modifying in-memory tree indentation/tail
+        doc_copy = deepcopy(doc_root)
+
+        if pretty:
+            etree.indent(doc_copy, space="  ")
+            xml_data = etree.tostring(doc_copy, pretty_print=True, encoding="utf-8", xml_declaration=True)
+        else:
+            xml_data = etree.tostring(doc_copy, pretty_print=False, encoding="utf-8", xml_declaration=True)
+
+        with open(filepath, "wb") as f:
+            f.write(xml_data)
+
+        # Update mount path if user gave a new filepath
+        self.mounts[mount_name] = filepath
+
+        return f"Saved '{mount_name}' to '{filepath}'"
+
+    def print(self, path=None, pretty=True):
+        """Pretty-print the given node (or cwd) with optional rich highlighting."""
+        try:
+            node = self.get_node_by_path(path) if path else self.cwd
+        except Exception as e:
+            raise ValueError(f"Invalid path: {e}")
+
+        if node is None:
+            raise ValueError("No node found to print.")
+
+        method = "html" if isinstance(node, html.HtmlElement) else "xml"
+
+        try:
+            # Optionally indent only for pretty mode
+            if pretty:
+                node_copy = deepcopy(node)
+                etree.indent(node_copy, space="  ")
+                output_node = node_copy
+            else:
+                output_node = node
+
+            raw = etree.tostring(
+                output_node,
+                pretty_print=pretty,
+                encoding="unicode",
+                method=method,
+                with_tail=False,
+                xml_declaration=False
+            ).strip()
+
+            if _has_rich:
+                syntax = Syntax(raw, method, theme="github-dark", line_numbers=False)
+                _console.print(syntax)
+            else:
+                print(raw)
+
+        except Exception as e:
+            raise RuntimeError(f"Error printing node: {e}")

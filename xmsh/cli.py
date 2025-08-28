@@ -15,8 +15,8 @@ def main(debug=False):
     vfs = VirtualFileSystem()
 
     if debug:
-        print(COMMANDS['mount'](('bf', '../data/bf.xml'), vfs))
-        print(COMMANDS['mount'](('hp', '../data/hp.html'), vfs))
+        print(COMMANDS['mount'](('homepage', '../data/homepage.html'), vfs))
+        print(COMMANDS['mount'](('menu', '../data/menu.xml'), vfs))
 
     while True:
         prompt = get_prompt(vfs)

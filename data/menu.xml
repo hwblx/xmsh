@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<italian>
+  <pizza>
+    <name>Margherita</name>
+    <ingredients>Tomato sauce, Mozzarella, Basil</ingredients>
+    <price>8.50</price>
+  </pizza>
+  <lasagne>
+    <name>Bolognese</name>
+    <ingredients>Lasagna sheets, Bolognese sauce, Béchamel sauce, Parmesan cheese</ingredients>
+    <price>11.00</price>
+  </lasagne>
+  <spaghetti>
+    <name>Carbonara</name>
+    <ingredients>Spaghetti, Eggs, Pecorino Romano, Guanciale, Black pepper</ingredients>
+    <price>10.00</price>
+  </spaghetti>
+  <tortellini>
+    <name>Quattro Formaggi</name>
+    <ingredients>Tortellini, Parmesan, Gorgonzola, Fontina, Mozzarella, Cream</ingredients>
+    <price>12.50</price>
+  </tortellini>
+  <tiramisu>
+    <name>Classico</name>
+    <ingredients>Mascarpone cheese, Eggs, Sugar, Espresso, Ladyfingers, Cocoa powder</ingredients>
+    <price>6.00</price>
+  </tiramisu>
+</italian>
