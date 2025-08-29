@@ -9,11 +9,9 @@ import requests
 try:
     from rich.syntax import Syntax
     from rich.console import Console
-    _has_rich = True
-    _console = Console()
+    console = Console()
 except ImportError:
-    _has_rich = False
-    _console = None
+    console = None
 
 
 class VirtualFileSystem:
@@ -274,9 +272,9 @@ class VirtualFileSystem:
                 xml_declaration=False
             ).strip()
 
-            if _has_rich:
+            if console:
                 syntax = Syntax(raw, method, theme="github-dark", line_numbers=False)
-                _console.print(syntax)
+                console.print(syntax)
             else:
                 print(raw)
 
