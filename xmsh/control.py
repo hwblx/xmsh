@@ -147,7 +147,7 @@ def cmd_text(args, vfs):
 
 
 def cmd_add(args, vfs):
-    """Added a new child element to the current node, optionally at 1-based index."""
+    """Add a new child element to the current node, optionally at 1-based index."""
     if not args:
         return "Usage: add <tag> [index]"
 
@@ -165,14 +165,18 @@ def cmd_add(args, vfs):
     new_elem = etree.Element(tag)
 
     if index is not None:
-        pos = index - 1  # convert to 0-based index
+        pos = index - 1
         if pos > len(vfs.cwd):
             return f"Index {index} out of bounds for {vfs.cwd.tag}"
         vfs.cwd.insert(pos, new_elem)
-        return f"Inserted <{tag}> at position {index} under <{vfs.cwd.tag}>"
     else:
         vfs.cwd.append(new_elem)
-        return f"Added <{tag}> under <{vfs.cwd.tag}>"
+
+    # Register as a mountpoint if added directly under root
+    if vfs.cwd == vfs.root and tag not in vfs.mounts:
+        vfs.mounts[tag] = None  # No backing file yet
+
+    return f"Added <{tag}> under <{vfs.cwd.tag}>"
 
 
 def cmd_rm(args, vfs):
