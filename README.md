@@ -24,11 +24,11 @@ comp.set_keywords(['apple', 'banana', 'cherry'])
 comp.init_readline()
 
 # Setting keywords dynamically
-comp.set_keywords(['bush', 'flower', 'tree'])
+comp.set_keywords(['orange', 'pineapple', 'strawberry'])
 
 # (Optional) Set fuzzy match cutoff (0.0 - 1.0)
 comp.set_cutoff(0.7)
 
 # (Optional) Pre-fill the input line
-Completer.set_readline_hook('apple')
+Completer.set_readline_hook('fruit')
 
