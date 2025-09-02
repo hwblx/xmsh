@@ -1,10 +1,12 @@
 """
 CLI entry point for navigating XML/HTML documents 
 in a virtual file system.
+
+Copyright (c) 2025 hwblx
 """
 
-from xmsh.dispatcher import COMMANDS
-from xmsh.documents import VirtualFileSystem
+from xmsh.control import COMMANDS
+from xmsh.model import VirtualFileSystem
 from lib.completer import completer
 
 

@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.dispatcher import cmd_cd, cmd_cp, cmd_rm, cmd_mv
+from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv
 
 from lxml import etree
 

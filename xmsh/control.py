@@ -1,8 +1,10 @@
-"""Command dispatcher for the CLI interface, mapping commands to handlers."""
+"""
+Command dispatcher for the CLI interface, mapping commands to handlers.
+
+Copyright (c) 2025 hwblx
+"""
 
 from lxml import etree
-
-# from documents import VirtualFileSystem
 
 
 def cmd_mount(args, vfs):

@@ -1,7 +1,5 @@
 # xmsh – A Filesystem-Inspired Shell for XML and HTML Documents
 
-:copyright: Harald Weber 2025
-
 **xmsh** is an interactive command-line tool that lets you explore, navigate, and manipulate XML and HTML documents as if they were part of a virtual filesystem.
 
 Inspired by Unix shells and structured document formats, it combines the familiarity of commands like `cd`, `ls`, and `mv` with the power of XPath and DOM traversal.

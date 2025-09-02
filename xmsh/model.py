@@ -1,4 +1,8 @@
-"""Implements a virtual file system for navigating XML/HTML documents."""
+"""
+Implements a virtual file system for navigating XML/HTML documents.
+
+Copyright (c) 2025 hwblx
+"""
 
 from copy import deepcopy
 from urllib.parse import urlparse
@@ -25,7 +29,7 @@ class VirtualFileSystem:
 
     def mount(self, name, filepath):
         """Mount a file under the given name into the virtual file system."""
-        
+
         if self.root.find(name) is not None:
             raise ValueError(f"Mount '{name}' already exists")
 
@@ -34,12 +38,12 @@ class VirtualFileSystem:
         elif filepath.lower().endswith('.xml'):
             parsed_root = etree.parse(filepath).getroot()
         else:
-            print("Only .html and .xml files are supported")
+            raise ValueError("Only .html and .xml files are supported")
 
         mount_point = etree.SubElement(self.root, name)
         mount_point.append(parsed_root)
         self.mounts[name] = filepath
-
+    
     def get_mount_name_for_node(self, node):
         current = node
         while current is not None and current != self.root:
