@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, CommandResult
+from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
@@ -249,4 +249,33 @@ def test_cmd_tree_no_mount():
     vfs.cwd = None
     result = cmd_tree([], vfs)
     assert result.error == "Nothing mounted. Use 'mount' first."
+
+def test_cmd_text_get():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/a")
+    vfs.cwd.text = "Hello"
+    result = cmd_text([], vfs)
+    assert result.output == "Hello"
+
+def test_cmd_text_set():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/a")
+    result = cmd_text(["New", "text"], vfs)
+    assert result.output == "a text set to: New text"
+    assert vfs.cwd.text == "New text"
+
+def test_cmd_text_set_empty_quotes():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/a")
+    vfs.cwd.text = "Old"
+    result = cmd_text(["''"], vfs)
+    assert result.output == "a text set to: None"
+    assert vfs.cwd.text is None
+
+def test_cmd_text_no_cwd():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = None
+    result = cmd_text(["text"], vfs)
+    assert result.status == "error"
+    assert "No current node" in result.error
 

@@ -173,15 +173,20 @@ def cmd_mount_url(args, vfs):
 
 
 def cmd_text(args, vfs):
-    """Get or set the text content of the current node."""
+    if vfs.cwd is None:
+        return CommandResult(error="No current node selected.", status="error")
+
     if args:
         text = ' '.join(args)
         if text in ("''", '""'):
             text = None
-        vfs.cwd.text = text
-        return f"{vfs.cwd.tag} text set to: {text}"
+        try:
+            vfs.cwd.text = text
+            return CommandResult(output=f"{vfs.cwd.tag} text set to: {text}")
+        except Exception as e:
+            return CommandResult(error=str(e), status="error")
     else:
-        return vfs.cwd.text or ""
+        return CommandResult(output=vfs.cwd.text or "")
 
 
 def cmd_add(args, vfs):
