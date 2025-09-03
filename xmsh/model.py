@@ -10,13 +10,6 @@ from urllib.parse import urlparse
 from lxml import etree, html
 import requests
 
-try:
-    from rich.syntax import Syntax
-    from rich.console import Console
-    console = Console()
-except ImportError:
-    console = None
-
 
 class VirtualFileSystem:
     """Represents a virtual file system for XML/HTML tree navigation."""
@@ -247,7 +240,7 @@ class VirtualFileSystem:
         return f"Saved '{mount_name}' to '{filepath}'"
 
     def print(self, path=None, pretty=True):
-        """Pretty-print the given node (or cwd) with optional rich highlighting."""
+        """Return a string representation of the given node (or cwd), with optional pretty formatting."""
         try:
             node = self.get_node_by_path(path) if path else self.cwd
         except Exception as e:
@@ -259,7 +252,6 @@ class VirtualFileSystem:
         method = "html" if isinstance(node, html.HtmlElement) else "xml"
 
         try:
-            # Optionally indent only for pretty mode
             if pretty:
                 node_copy = deepcopy(node)
                 etree.indent(node_copy, space="  ")
@@ -267,7 +259,7 @@ class VirtualFileSystem:
             else:
                 output_node = node
 
-            raw = etree.tostring(
+            return etree.tostring(
                 output_node,
                 pretty_print=pretty,
                 encoding="unicode",
@@ -276,11 +268,6 @@ class VirtualFileSystem:
                 xml_declaration=False
             ).strip()
 
-            if console:
-                syntax = Syntax(raw, method, theme="github-dark", line_numbers=False)
-                console.print(syntax)
-            else:
-                print(raw)
-
         except Exception as e:
             raise RuntimeError(f"Error printing node: {e}")
+

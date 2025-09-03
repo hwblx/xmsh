@@ -1,5 +1,5 @@
 from lxml import etree
-from xmsh.control import cmd_save, cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_print, cmd_save, cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 from xmsh.model import VirtualFileSystem
 
 
@@ -51,9 +51,16 @@ class MockVFS:
 
     def save(self, filepath, pretty=True):
         return "Saved"
+    
+    def print(self, path=None, pretty=True):
+            node = self.cwd if path is None else self.get_node_by_path(path)
 
-    def print(self, path, pretty=True):
-        print(f"[MockPrint] {path}")
+            return etree.tostring(
+                node,
+                pretty_print=pretty,
+                encoding="unicode",
+                xml_declaration=False
+            ).strip()
 
 def build_tree():
     """
@@ -547,3 +554,33 @@ def test_cmd_save_error(tmp_path, monkeypatch):
     assert result.status == "error"
     assert "Error saving: fail" in result.error
 
+
+def test_cmd_print_cwd():
+    vfs = MockVFS(build_tree())
+    result = cmd_print([], vfs)
+    assert result.status == "ok"
+    assert "<root" in result.output  # Expect element tag present
+
+def test_cmd_print_specific_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_print(["/a"], vfs)
+    assert result.status == "ok"
+    assert "<a" in result.output
+
+def test_cmd_print_raw():
+    vfs = MockVFS(build_tree())
+    result = cmd_print(["--raw"], vfs)
+    assert result.status == "ok"
+    assert result.output.strip().startswith("<root")  # Checks raw XML begins correctly
+
+def test_cmd_print_invalid_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_print(["/nonexistent"], vfs)
+    assert result.status == "error"
+    assert "Error printing" in result.error
+
+def test_cmd_print_invalid_usage():
+    vfs = MockVFS(build_tree())
+    result = cmd_print(["--raw", "/nonexistent"], vfs)
+    assert result.status == "error"
+    assert "Error printing" in result.error

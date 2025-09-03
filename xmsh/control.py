@@ -449,7 +449,6 @@ def cmd_print(args, vfs):
 
     path = None
     pretty = True
-
     args_copy = args[:]
 
     if '--raw' in args_copy:
@@ -460,10 +459,11 @@ def cmd_print(args, vfs):
         path = args_copy[0]
 
     try:
-        vfs.print(path, pretty=pretty)
-        return ""  # output already printed
+        # Capture the output instead of printing to console
+        output = vfs.print(path, pretty=pretty)
+        return CommandResult(output=output or "", status="ok")
     except Exception as e:
-        return f"Error printing: {e}"
+        return CommandResult(error=f"Error printing: {e}", status="error")
 
 
 def cmd_get(args, vfs):
