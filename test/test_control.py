@@ -121,68 +121,6 @@ def test_cd_invalid_path():
     assert "Error:" in result.error or result.error.startswith("Error")
 
 
-def test_mv_to_new_parent():
-    vfs = MockVFS(build_tree())
-    src_path = "/b/b1"
-    dest_path = "/c"
-
-    # Move b1 under c
-    result = cmd_mv([src_path, dest_path], vfs)
-    assert result == "Moved 'b1' as last child of 'c'"
-
-    # b1 should no longer exist under b
-    b_children = [child.tag for child in vfs.get_node_by_path("/b")]
-    assert "b1" not in b_children
-
-    # b1 should now exist under c
-    c_children = [child.tag for child in vfs.get_node_by_path("/c")]
-    assert "b1" in c_children
-
-def test_mv_reorder_among_siblings():
-    vfs = MockVFS(build_tree())
-    
-    # Move b2 to index 1 under parent b (i.e., before b1)
-    result = cmd_mv(["/b/b2", "1"], vfs)
-    assert result == "Moved 'b2' to position 1 under parent 'b'"
-
-    b = vfs.get_node_by_path("/b")
-    child_tags = [child.tag for child in b]
-    assert child_tags == ["b2", "b1"]
-
-def test_mv_root():
-    root = build_tree()
-    vfs = MockVFS(root)
-    assert vfs.get_node_by_path("/") is vfs.root  # Confirm identity
-    result = cmd_mv(["/", "/b"], vfs)
-    assert "cannot move root" in result
-
-def test_mv_invalid_source():
-    vfs = MockVFS(build_tree())
-    result = cmd_mv(["/nope", "/c"], vfs)
-    assert "Error: source not found" in result
-
-def test_mv_invalid_target():
-    vfs = MockVFS(build_tree())
-    result = cmd_mv(["/b/b1", "/nope"], vfs)
-    assert "Error: target not found" in result
-
-def test_mv_into_self():
-    vfs = MockVFS(build_tree())
-    result = cmd_mv(["/b", "/b"], vfs)
-    assert "source and target are the same node" in result
-
-def test_mv_into_descendant():
-    vfs = MockVFS(build_tree())
-    result = cmd_mv(["/b", "/b/b1"], vfs)
-    assert "cannot move a node into one of its descendants" in result
-
-def test_mv_cwd_or_ancestor():
-    vfs = MockVFS(build_tree())
-    vfs.cwd = vfs.get_node_by_path("/b/b1")
-    result = cmd_mv(["/b", "/c"], vfs)
-    assert "Cannot move current directory or one of its ancestors" in result
-
-
 def test_cmd_tree():
     vfs = MockVFS(build_tree())
     vfs.cwd = vfs.get_node_by_path("/b")
@@ -501,4 +439,53 @@ def test_cmd_cp_usage_error():
     assert isinstance(result, CommandResult)
     assert result.status == "error"
     assert "Usage: cp <source> <target>" in result.error
+
+
+def test_cmd_mv_to_new_parent():
+    vfs = MockVFS(build_tree())
+    assert vfs.get_node_by_path("/b/b1").getparent().tag == "b"
+    result = cmd_mv(["/b/b1", "/a"], vfs)
+    assert result.output == "Moved 'b1' as last child of 'a'"
+    assert vfs.get_node_by_path("/a/b1") is not None
+
+def test_cmd_mv_reorder_among_siblings():
+    vfs = MockVFS(build_tree())
+    parent = vfs.get_node_by_path("/b")
+    children_before = [child.tag for child in parent]
+    assert children_before == ["b1", "b2"]
+    result = cmd_mv(["/b/b2", "1"], vfs)
+    assert result.output == "Moved 'b2' to position 1 under parent 'b'"
+    children_after = [child.tag for child in parent]
+    assert children_after == ["b2", "b1"]
+
+def test_cmd_mv_root():
+    vfs = MockVFS(build_tree())
+    result = cmd_mv(["/", "/a"], vfs)
+    assert "cannot move root" in result.error
+
+def test_cmd_mv_invalid_source():
+    vfs = MockVFS(build_tree())
+    result = cmd_mv(["/invalid", "/a"], vfs)
+    assert "source not found" in result.error
+
+def test_cmd_mv_invalid_target():
+    vfs = MockVFS(build_tree())
+    result = cmd_mv(["/a", "/invalid"], vfs)
+    assert "target not found" in result.error
+
+def test_cmd_mv_into_self():
+    vfs = MockVFS(build_tree())
+    result = cmd_mv(["/a", "/a"], vfs)
+    assert "source and target are the same node" in result.error
+
+def test_cmd_mv_into_descendant():
+    vfs = MockVFS(build_tree())
+    result = cmd_mv(["/b", "/b/b1"], vfs)
+    assert "cannot move a node into one of its descendants" in result.error
+
+def test_cmd_mv_cwd_or_ancestor():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/b/b1")  # cwd is descendant of /b
+    result = cmd_mv(["/b", "/a"], vfs)
+    assert "Cannot move current directory or one of its ancestors" in result.error
 

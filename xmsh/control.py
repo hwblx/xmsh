@@ -349,76 +349,80 @@ def cmd_mv(args, vfs):
       mv <source_path> <sibling_index> # reorder source among siblings by index (1-based)
     """
     if len(args) != 2:
-        return "Usage: mv <source> <target_path|sibling_index>"
+        return CommandResult(error="Usage: mv <source> <target_path|sibling_index>", status="error")
 
     src_path, target = args
 
     try:
         src_node = vfs.get_node_by_path(src_path)
     except Exception as e:
-        return f"Error: source not found: {e}"
+        return CommandResult(error=f"Error: source not found: {e}", status="error")
 
     if src_node == vfs.root:
-        return "Error: cannot move root"
+        return CommandResult(error="Error: cannot move root", status="error")
 
     parent = src_node.getparent()
     if parent is None:
-        return "Error: source node has no parent"
+        return CommandResult(error="Error: source node has no parent", status="error")
 
-    # Determine if target is an integer (sibling index)
+    # Case 1: target is an index (sibling reordering)
     try:
         index = int(target)
-        # Move among siblings
         siblings = [c for c in parent if c != src_node]
+
         if index < 1:
             index = 1
-        if index > len(siblings) + 1:
+        elif index > len(siblings) + 1:
             index = len(siblings) + 1
 
-        # Remove from parent
         parent.remove(src_node)
-
-        # Insert at new position (list insert at index-1)
         siblings.insert(index - 1, src_node)
 
-        # Clear existing children and re-add all siblings in new order
         for child in list(parent):
             parent.remove(child)
         for child in siblings:
             parent.append(child)
 
-        return f"Moved '{src_node.tag}' to position {index} under parent '{parent.tag}'"
+        return CommandResult(
+            output=f"Moved '{src_node.tag}' to position {index} under parent '{parent.tag}'"
+        )
 
     except ValueError:
-        # target is not an int, treat as path
+        # Case 2: target is a path (move to another parent)
         try:
             target_node = vfs.get_node_by_path(target)
         except Exception as e:
-            return f"Error: target not found: {e}"
+            return CommandResult(error=f"Error: target not found: {e}", status="error")
 
         if src_node == target_node:
-            return "Error: source and target are the same node"
+            return CommandResult(error="Error: source and target are the same node", status="error")
 
-        # Prevent moving cwd or its ancestors
+        # Disallow moving cwd or its ancestors
         current = vfs.cwd
         while current is not None:
             if current == src_node:
-                return f"Cannot move current directory or one of its ancestors: {vfs.build_path(src_node)}"
+                return CommandResult(
+                    error=f"Cannot move current directory or one of its ancestors: {vfs.build_path(src_node)}",
+                    status="error"
+                )
             current = current.getparent()
 
-        # Prevent moving a node into one of its own descendants
+        # Prevent moving into one of its own descendants
         current = target_node
         while current is not None:
             if current == src_node:
-                return "Error: cannot move a node into one of its descendants"
+                return CommandResult(
+                    error="Error: cannot move a node into one of its descendants",
+                    status="error"
+                )
             current = current.getparent()
 
-        # Remove from old parent
         parent.remove(src_node)
-        # Append to new parent
         target_node.append(src_node)
 
-        return f"Moved '{src_node.tag}' as last child of '{target_node.tag}'"
+        return CommandResult(
+            output=f"Moved '{src_node.tag}' as last child of '{target_node.tag}'"
+        )
 
 
 def cmd_save(args, vfs):
