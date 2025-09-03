@@ -274,7 +274,7 @@ def cmd_rename(args, vfs):
     new_tag = args[0]
     old_tag = vfs.cwd.tag
     vfs.cwd.tag = new_tag
-    return f"Renamed <{old_tag}> to <{new_tag}>"
+    return CommandResult(output=f"Renamed <{old_tag}> to <{new_tag}>")
 
 
 def cmd_find(args, vfs):
