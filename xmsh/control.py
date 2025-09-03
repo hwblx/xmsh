@@ -479,6 +479,33 @@ def cmd_lsattr(args, vfs):
 def cmd_pwd(args, vfs):
     return vfs.build_path(vfs.cwd)
 
+
+def dispatch_command(cmdline: str, vfs) -> tuple[str | None, bool]:
+    """
+    Parse and dispatch a command line string.
+
+    Returns:
+        - result: str or None (output to be printed, or None if no output)
+        - done: bool (True if command ends the session, like 'exit')
+    """
+    cmdline = cmdline.strip()
+    if not cmdline:
+        return None, False
+
+    parts = cmdline.split()
+    cmd, *args = parts
+
+    if cmd in ('exit', 'quit'):
+        return "bye", True
+
+    handler = COMMANDS.get(cmd)
+    if handler is None:
+        return f"Unknown command: {cmd}", False
+
+    result = handler(args, vfs)
+    return result, False
+
+
 def cmd_help(args, vfs):
     """Show help for commands."""
     help_text = """

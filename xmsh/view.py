@@ -5,7 +5,7 @@ in a virtual file system.
 Copyright (c) 2025 hwblx
 """
 
-from xmsh.control import COMMANDS
+from xmsh.control import dispatch_command
 from xmsh.model import VirtualFileSystem
 from lib.completer import completer
 
@@ -73,8 +73,8 @@ def main(debug=False):
     vfs = VirtualFileSystem()
 
     if debug:
-        print(COMMANDS['mount'](('homepage', './data/homepage.html'), vfs))
-        print(COMMANDS['mount'](('menu', './data/menu.xml'), vfs))
+        print(dispatch_command('mount homepage ./data/homepage.html', vfs))
+        print(dispatch_command('mount menu ./data/menu.xml', vfs))
 
     comp = completer.Completer()
     comp.init_readline()
@@ -92,21 +92,13 @@ def main(debug=False):
         if not cmdline.strip():
             continue
 
-        parts = cmdline.strip().split()
-        cmd, *args = parts
+        result, done = dispatch_command(cmdline, vfs)
 
-        if cmd in ('exit', 'quit'):
-            print('bye')
-            break
-
-        handler = COMMANDS.get(cmd)
-        if handler is None:
-            print(f"Unknown command: {cmd}")
-            continue
-
-        result = handler(args, vfs)
-        if result is not None:
+        if result:
             print(result)
+
+        if done:
+            break
 
         update_completions(vfs, comp)
 
