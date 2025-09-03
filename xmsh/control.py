@@ -192,7 +192,7 @@ def cmd_text(args, vfs):
 def cmd_add(args, vfs):
     """Add a new child element to the current node, optionally at 1-based index."""
     if not args:
-        return "Usage: add <tag> [index]"
+        return CommandResult(error="Usage: add <tag> [index]", status="error")
 
     tag = args[0]
     index = None
@@ -201,25 +201,32 @@ def cmd_add(args, vfs):
         try:
             index = int(args[1])
             if index < 1:
-                return "Index must be 1 or greater"
+                return CommandResult(error="Index must be 1 or greater", status="error")
         except ValueError:
-            return "Index must be an integer"
+            return CommandResult(error="Index must be an integer", status="error")
 
-    new_elem = etree.Element(tag)
+    try:
+        new_elem = etree.Element(tag)
 
-    if index is not None:
-        pos = index - 1
-        if pos > len(vfs.cwd):
-            return f"Index {index} out of bounds for {vfs.cwd.tag}"
-        vfs.cwd.insert(pos, new_elem)
-    else:
-        vfs.cwd.append(new_elem)
+        if index is not None:
+            pos = index - 1
+            if pos > len(vfs.cwd):
+                return CommandResult(
+                    error=f"Index {index} out of bounds for {vfs.cwd.tag}",
+                    status="error"
+                )
+            vfs.cwd.insert(pos, new_elem)
+        else:
+            vfs.cwd.append(new_elem)
 
-    # Register as a mountpoint if added directly under root
-    if vfs.cwd == vfs.root and tag not in vfs.mounts:
-        vfs.mounts[tag] = None  # No backing file yet
+        # Register as a mountpoint if added directly under root
+        if vfs.cwd == vfs.root and tag not in vfs.mounts:
+            vfs.mounts[tag] = None  # No backing file yet
 
-    return f"Added <{tag}> under <{vfs.cwd.tag}>"
+        return CommandResult(output=f"Added <{tag}> under <{vfs.cwd.tag}>")
+
+    except Exception as e:
+        return CommandResult(error=str(e), status="error")
 
 
 def cmd_rm(args, vfs):

@@ -1,12 +1,13 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
     def __init__(self, root):
         self.root = root
         self.cwd = root
+        self.mounts = {}
 
     def get_node_by_path(self, path):
         if path is None:
@@ -405,5 +406,32 @@ def test_cmd_lsattr_invalid_usage():
     vfs = MockVFS(build_tree())
     result = cmd_lsattr(["/b", "extra_arg"], vfs)
     assert isinstance(result, CommandResult)
+    assert "Usage" in result.error
+
+def test_cmd_add_default_append():
+    vfs = MockVFS(build_tree())
+    result = cmd_add(["newtag"], vfs)
+    assert result.output == "Added <newtag> under <root>"
+    assert vfs.cwd[-1].tag == "newtag"
+
+def test_cmd_add_at_index():
+    vfs = MockVFS(build_tree())
+    result = cmd_add(["newtag", "1"], vfs)
+    assert result.output == "Added <newtag> under <root>"
+    assert vfs.cwd[0].tag == "newtag"
+
+def test_cmd_add_invalid_index():
+    vfs = MockVFS(build_tree())
+    result = cmd_add(["newtag", "0"], vfs)
+    assert "Index must be 1 or greater" in result.error
+
+def test_cmd_add_out_of_bounds():
+    vfs = MockVFS(build_tree())
+    result = cmd_add(["newtag", "99"], vfs)
+    assert "out of bounds" in result.error
+
+def test_cmd_add_missing_tag():
+    vfs = MockVFS(build_tree())
+    result = cmd_add([], vfs)
     assert "Usage" in result.error
 
