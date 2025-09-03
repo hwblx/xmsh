@@ -91,33 +91,58 @@ def cmd_cd(args, vfs):
         return CommandResult(error=f"Error: {e}", status="error")
 
 
-def cmd_tree(args, context):
-    """Pretty print the subtree from the current working node, optionally folded at a depth."""
-    if context.cwd is None:
-        return "Nothing mounted. Use 'mount' first."
+def cmd_tree(args, vfs):
+    if vfs.cwd is None:
+        return CommandResult(error="Nothing mounted. Use 'mount' first.", status="error")
 
-    max_depth = int(args[0]) if args else None
-    print_tree(context.cwd, max_depth=max_depth)
-    return ""
+    max_depth = None
+    if args:
+        try:
+            max_depth = int(args[0])
+        except ValueError:
+            return CommandResult(error=f"Invalid depth value: {args[0]}", status="error")
+
+    try:
+        tree_str = print_tree(vfs.cwd, max_depth=max_depth, return_string=True)
+        return CommandResult(output=tree_str)
+    except Exception as e:
+        return CommandResult(error=str(e), status="error")
 
 
-def print_tree(element, prefix="", is_last=True, depth=0, max_depth=None):
-    """Recursively print a visual tree structure of XML/HTML nodes with optional depth folding."""
-    connector = "└── " if is_last else "├── "
-    print(prefix + connector + str(element.tag))
+def print_tree(element, prefix="", is_last=True, depth=0, max_depth=None, return_string=False):
+    """Recursively build a visual tree structure string of XML/HTML nodes with optional depth folding."""
 
-    # Stop recursion if we've reached the folding level
-    if max_depth is not None and depth >= max_depth:
-        if len(element):
-            folded_prefix = prefix + ("    " if is_last else "│   ")
-            print(folded_prefix + "└── [...]")
-        return
+    lines = []
 
-    children = list(element)
-    for i, child in enumerate(children):
-        last = (i == len(children) - 1)
-        new_prefix = prefix + ("    " if is_last else "│   ")
-        print_tree(child, new_prefix, last, depth + 1, max_depth)
+    def _print_tree(element, prefix, is_last, depth, max_depth):
+        connector = "└── " if is_last else "├── "
+        line = prefix + connector + str(element.tag)
+        if return_string:
+            lines.append(line)
+        else:
+            print(line)
+
+        # Stop recursion if we've reached the folding level
+        if max_depth is not None and depth >= max_depth:
+            if len(element):
+                folded_prefix = prefix + ("    " if is_last else "│   ")
+                folded_line = folded_prefix + "└── [...]"
+                if return_string:
+                    lines.append(folded_line)
+                else:
+                    print(folded_line)
+            return
+
+        children = list(element)
+        for i, child in enumerate(children):
+            last = (i == len(children) - 1)
+            new_prefix = prefix + ("    " if is_last else "│   ")
+            _print_tree(child, new_prefix, last, depth + 1, max_depth)
+
+    _print_tree(element, prefix, is_last, depth, max_depth)
+
+    if return_string:
+        return "\n".join(lines)
 
 
 def cmd_unmount(args, vfs):

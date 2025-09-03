@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, CommandResult
+from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, CommandResult
 
 
 class MockVFS:
@@ -235,4 +235,18 @@ def test_mv_cwd_or_ancestor():
     vfs.cwd = vfs.get_node_by_path("/b/b1")
     result = cmd_mv(["/b", "/c"], vfs)
     assert "Cannot move current directory or one of its ancestors" in result
+
+def test_cmd_tree():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/b")
+    result = cmd_tree([], vfs)
+    assert isinstance(result, CommandResult)
+    assert "b" in result.output
+    assert "b1" in result.output
+
+def test_cmd_tree_no_mount():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = None
+    result = cmd_tree([], vfs)
+    assert result.error == "Nothing mounted. Use 'mount' first."
 
