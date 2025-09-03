@@ -1,4 +1,3 @@
-import pytest
 from lxml import etree
 from xmsh.control import cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
@@ -120,38 +119,6 @@ def test_cd_invalid_path():
     result = cmd_cd(["/nonexistent"], vfs)
     assert isinstance(result, CommandResult)
     assert "Error:" in result.error or result.error.startswith("Error")
-
-
-def test_cp_success():
-    vfs = MockVFS(build_tree())
-    result = cmd_cp(["/b/b1", "/c"], vfs)
-    assert result.startswith("Copied 'b1' to '/c'")
-
-    # Verify copied element exists
-    c_node = vfs.get_node_by_path("/c")
-    copied_tags = [child.tag for child in c_node]
-    assert "b1" in copied_tags
-
-def test_cp_nonexistent_source():
-    vfs = MockVFS(build_tree())
-    result = cmd_cp(["/notfound", "/c"], vfs)
-    assert "Error: source not found" in result
-
-def test_cp_nonexistent_target():
-    vfs = MockVFS(build_tree())
-    result = cmd_cp(["/b/b1", "/notfound"], vfs)
-    assert "Error: target not found" in result
-
-def test_cp_into_descendant():
-    vfs = MockVFS(build_tree())
-    result = cmd_cp(["/b", "/b/b1"], vfs)
-    assert "Cannot copy a node into one of its own descendants" in result
-
-    root = build_tree()
-    vfs = MockVFS(root)
-    vfs.cwd = vfs.get_node_by_path("/b/b1")  # cwd is a descendant of /b
-    result = cmd_rm(["/b"], vfs)
-    assert "Cannot remove current directory or one of its ancestors" in result
 
 
 def test_mv_to_new_parent():
@@ -496,4 +463,42 @@ def test_cmd_find_with_invalid_build_path(monkeypatch):
     result = cmd_find(["//*"], vfs)
     assert result.status == "ok"
     assert "a" not in result.output  # 'a' node paths skipped due to error
+
+
+def test_cmd_cp_success():
+    vfs = MockVFS(build_tree())
+    result = cmd_cp(["/a", "/b"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Copied 'a' to '/b'" in result.output
+    # Confirm that the new child was added
+    copied = [child.tag for child in vfs.get_node_by_path("/b")]
+    assert "a" in copied
+
+def test_cmd_cp_nonexistent_source():
+    vfs = MockVFS(build_tree())
+    result = cmd_cp(["/nonexistent", "/b"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.status == "error"
+    assert "source not found" in result.error
+
+def test_cmd_cp_nonexistent_target():
+    vfs = MockVFS(build_tree())
+    result = cmd_cp(["/a", "/nonexistent"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.status == "error"
+    assert "target not found" in result.error
+
+def test_cmd_cp_into_descendant():
+    vfs = MockVFS(build_tree())
+    result = cmd_cp(["/b", "/b/b1"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.status == "error"
+    assert "Cannot copy a node into one of its own descendants" in result.error
+
+def test_cmd_cp_usage_error():
+    vfs = MockVFS(build_tree())
+    result = cmd_cp(["only_one_argument"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.status == "error"
+    assert "Usage: cp <source> <target>" in result.error
 

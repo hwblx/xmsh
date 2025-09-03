@@ -309,32 +309,35 @@ def cmd_find(args, vfs):
 def cmd_cp(args, vfs):
     """Copy a node to another location."""
     if len(args) != 2:
-        return "Usage: cp <source> <target>"
+        return CommandResult(error="Usage: cp <source> <target>", status="error")
 
     src_path, dest_path = args
 
     try:
         src_node = vfs.get_node_by_path(src_path)
     except Exception as e:
-        return f"Error: source not found: {e}"
+        return CommandResult(error=f"Error: source not found: {e}", status="error")
 
     try:
         dest_node = vfs.get_node_by_path(dest_path)
     except Exception as e:
-        return f"Error: target not found: {e}"
+        return CommandResult(error=f"Error: target not found: {e}", status="error")
 
     # Prevent copying into one of its own descendants
     current = dest_node
     while current is not None:
         if current == src_node:
-            return "Cannot copy a node into one of its own descendants"
+            return CommandResult(
+                error="Cannot copy a node into one of its own descendants",
+                status="error"
+            )
         current = current.getparent()
 
     try:
         vfs.cp_node(src_node, dest_node)
-        return f"Copied '{src_node.tag}' to '{vfs.build_path(dest_node)}'"
+        return CommandResult(output=f"Copied '{src_node.tag}' to '{vfs.build_path(dest_node)}'")
     except Exception as e:
-        return f"Error copying: {e}"
+        return CommandResult(error=f"Error copying: {e}", status="error")
 
 
 def cmd_mv(args, vfs):
