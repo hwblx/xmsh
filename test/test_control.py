@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
@@ -338,4 +338,39 @@ def test_cmd_set_invalid_path():
     result = cmd_set(["/invalidpath", "foo", "bar"], vfs)
     assert isinstance(result, CommandResult)
     assert "Error" in result.error
+
+def test_cmd_delattr_on_cwd():
+    vfs = MockVFS(build_tree())
+    vfs.cwd.set("foo", "bar")
+    result = cmd_delattr(["foo"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.output == "Deleted attribute 'foo' from node 'root'"
+    assert "foo" not in vfs.cwd.attrib
+
+def test_cmd_delattr_on_path():
+    vfs = MockVFS(build_tree())
+    node = vfs.get_node_by_path("/b")
+    node.set("baz", "qux")
+    result = cmd_delattr(["/b", "baz"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.output == "Deleted attribute 'baz' from node 'b'"
+    assert "baz" not in node.attrib
+
+def test_cmd_delattr_missing_attribute():
+    vfs = MockVFS(build_tree())
+    result = cmd_delattr(["nonexistent"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "not found" in result.error
+
+def test_cmd_delattr_invalid_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_delattr(["/invalidpath", "foo"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Error" in result.error
+
+def test_cmd_delattr_invalid_usage():
+    vfs = MockVFS(build_tree())
+    result = cmd_delattr([], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Usage" in result.error
 

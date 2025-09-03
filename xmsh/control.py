@@ -493,17 +493,17 @@ def cmd_delattr(args, vfs):
     elif len(args) == 2:
         path, attr_name = args
     else:
-        return "Usage: attr-del [path] <attribute_name>"
+        return CommandResult(error="Usage: attr-del [path] <attribute_name>", status="error")
 
     try:
         node = vfs.get_node_by_path(path) if path else vfs.cwd
         if attr_name in node.attrib:
             del node.attrib[attr_name]
-            return f"Deleted attribute '{attr_name}' from node '{node.tag}'"
+            return CommandResult(output=f"Deleted attribute '{attr_name}' from node '{node.tag}'")
         else:
-            return f"Attribute '{attr_name}' not found on node '{node.tag}'"
+            return CommandResult(error=f"Attribute '{attr_name}' not found on node '{node.tag}'", status="error")
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=f"Error: {e}", status="error")
 
 
 def cmd_lsattr(args, vfs):
