@@ -5,6 +5,16 @@ Copyright (c) 2025 hwblx
 """
 
 from lxml import etree
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
+class CommandResult:
+    output: Optional[str] = None     # What to show in the UI
+    error: Optional[str] = None      # Any error message
+    data: Optional[object] = None    # Raw data for non-textual views
+    status: str = "ok"               # "ok" or "error" or "info", etc.
 
 
 def cmd_mount(args, vfs):
@@ -21,12 +31,12 @@ def cmd_mount(args, vfs):
 
 
 def cmd_ls(args, vfs):
-    """List child nodes of the current or specified path."""
     path = args[0] if args else None
     try:
-        return vfs.ls(path)
+        listing = vfs.ls(path)
+        return CommandResult(output=listing)
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=str(e), status="error")
 
 
 def cmd_cd(args, vfs):

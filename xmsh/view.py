@@ -5,7 +5,7 @@ in a virtual file system.
 Copyright (c) 2025 hwblx
 """
 
-from xmsh.control import dispatch_command
+from xmsh.control import CommandResult, dispatch_command
 from xmsh.model import VirtualFileSystem
 from lib.completer import completer
 
@@ -91,10 +91,17 @@ def main(debug=False):
 
         if not cmdline.strip():
             continue
-
+        
         result, done = dispatch_command(cmdline, vfs)
 
-        if result:
+        if isinstance(result, CommandResult):
+            if result.error:
+                print(f"[error] {result.error}")
+            elif result.output:
+                print(result.output)
+            # If needed, handle result.data for richer views here
+
+        elif result is not None:
             print(result)
 
         if done:
