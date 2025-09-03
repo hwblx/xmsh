@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
@@ -458,4 +458,42 @@ def test_cmd_rm_unmounts_root_child():
     result = cmd_rm(["/a"], vfs)
     assert result.output == "Removed <a> from /"
     assert "a" not in vfs.mounts  # Confirm unmounted
+
+
+def test_cmd_find_no_args():
+    vfs = MockVFS(build_tree())
+    result = cmd_find([], vfs)
+    assert result.error == "Usage: find <xpath>"
+    assert result.status == "error"
+
+def test_cmd_find_no_matches():
+    vfs = MockVFS(build_tree())
+    result = cmd_find(["nonexistenttag"], vfs)
+    assert result.status == "ok"
+    assert result.output == "No matches found."
+
+def test_cmd_find_multiple_matches():
+    vfs = MockVFS(build_tree())
+    # Assuming build_tree() creates nodes with tags 'a', 'b', etc.
+    result = cmd_find(["//*"], vfs)  # Match all elements
+    assert result.status == "ok"
+    paths = result.output.split('\n')
+    assert all(p.startswith("/") for p in paths)
+    assert len(paths) > 1  # Should find multiple nodes
+
+def test_cmd_find_with_invalid_build_path(monkeypatch):
+    vfs = MockVFS(build_tree())
+
+    # Force build_path to raise for one node
+    orig_build_path = vfs.build_path
+    def faulty_build_path(node):
+        if node.tag == 'a':
+            raise Exception("fail")
+        return orig_build_path(node)
+
+    vfs.build_path = faulty_build_path
+
+    result = cmd_find(["//*"], vfs)
+    assert result.status == "ok"
+    assert "a" not in result.output  # 'a' node paths skipped due to error
 

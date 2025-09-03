@@ -280,16 +280,16 @@ def cmd_rename(args, vfs):
 def cmd_find(args, vfs):
     """Find nodes matching an XPath query and return their absolute paths."""
     if not args:
-        return "Usage: find <xpath>"
+        return CommandResult(error="Usage: find <xpath>", status="error")
 
     xpath_query = ' '.join(args)
     try:
         matches = vfs.cwd.xpath(xpath_query)
     except Exception as e:
-        return f"Invalid XPath expression: {e}"
+        return CommandResult(error=f"Invalid XPath expression: {e}", status="error")
 
     if not matches:
-        return "No matches found."
+        return CommandResult(output="No matches found.", status="ok")
 
     paths = []
     for node in matches:
@@ -297,13 +297,13 @@ def cmd_find(args, vfs):
             path = vfs.build_path(node)
             paths.append(path)
         except Exception:
-            # In case build_path fails for some reason, skip node
+            # Skip nodes that fail build_path
             continue
 
     if not paths:
-        return "No valid matches found."
+        return CommandResult(output="No valid matches found.", status="ok")
 
-    return '\n'.join(paths)
+    return CommandResult(output='\n'.join(paths), status="ok")
 
 
 def cmd_cp(args, vfs):
