@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
@@ -278,4 +278,37 @@ def test_cmd_text_no_cwd():
     result = cmd_text(["text"], vfs)
     assert result.status == "error"
     assert "No current node" in result.error
+
+def test_cmd_get_attr_on_cwd():
+    vfs = MockVFS(build_tree())
+    vfs.cwd.set("foo", "bar")
+    result = cmd_get(["foo"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.output == "bar"
+
+def test_cmd_get_attr_on_path():
+    vfs = MockVFS(build_tree())
+    node = vfs.get_node_by_path("/b")
+    node.set("baz", "qux")
+    result = cmd_get(["/b", "baz"], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.output == "qux"
+
+def test_cmd_get_missing_attr():
+    vfs = MockVFS(build_tree())
+    result = cmd_get(["nonexistent"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "not found" in result.error
+
+def test_cmd_get_invalid_usage():
+    vfs = MockVFS(build_tree())
+    result = cmd_get([], vfs)  # no args
+    assert isinstance(result, CommandResult)
+    assert "Usage" in result.error
+
+def test_cmd_get_invalid_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_get(["/invalidpath", "foo"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Error" in result.error
 
