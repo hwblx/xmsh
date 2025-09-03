@@ -232,31 +232,38 @@ def cmd_add(args, vfs):
 def cmd_rm(args, vfs):
     """Remove a node at the specified path (absolute or relative)."""
     if not args:
-        return "Usage: rm <path>"
+        return CommandResult(error="Usage: rm <path>", status="error")
 
     path = args[0]
 
     try:
         target_node = vfs.get_node_by_path(path)
     except Exception as e:
-        return f"Invalid path: {e}"
+        return CommandResult(error=f"Invalid path: {e}", status="error")
 
     parent = target_node.getparent()
     if parent is None or target_node == vfs.root:
-        return "Cannot remove root or a node without a parent"
+        return CommandResult(error="Cannot remove root or a node without a parent", status="error")
 
     # Disallow removing cwd or any of its ancestors
     current = vfs.cwd
     while current is not None:
         if current == target_node:
-            return f"Cannot remove current directory or one of its ancestors: {vfs.build_path(target_node)}"
+            return CommandResult(
+                error=f"Cannot remove current directory or one of its ancestors: {vfs.build_path(target_node)}",
+                status="error"
+            )
         current = current.getparent()
 
     try:
         parent.remove(target_node)
-        return f"Removed <{target_node.tag}> from {vfs.build_path(parent)}"
+        # Unregister from mounts if it's a root child
+        if parent == vfs.root and target_node.tag in vfs.mounts:
+            del vfs.mounts[target_node.tag]
+
+        return CommandResult(output=f"Removed <{target_node.tag}> from {vfs.build_path(parent)}")
     except Exception as e:
-        return f"Error removing node: {e}"
+        return CommandResult(error=f"Error removing node: {e}", status="error")
 
 
 def cmd_rename(args, vfs):

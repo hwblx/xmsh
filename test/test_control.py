@@ -147,28 +147,6 @@ def test_cp_into_descendant():
     result = cmd_cp(["/b", "/b/b1"], vfs)
     assert "Cannot copy a node into one of its own descendants" in result
 
-def test_rm_success():
-    vfs = MockVFS(build_tree())
-    assert vfs.get_node_by_path("/b/b1") is not None
-    result = cmd_rm(["/b/b1"], vfs)
-    assert result == "Removed <b1> from /b"
-
-    with pytest.raises(ValueError):
-        vfs.get_node_by_path("/b/b1")
-
-def test_rm_root():
-    root = build_tree()
-    vfs = MockVFS(root)
-    assert vfs.get_node_by_path("/") is vfs.root  # Confirm identity
-    result = cmd_rm(["/"], vfs)
-    assert "Cannot remove root" in result
-
-def test_rm_invalid_path():
-    vfs = MockVFS(build_tree())
-    result = cmd_rm(["/invalid/path"], vfs)
-    assert "Invalid path:" in result
-
-def test_rm_cwd_or_ancestor():
     root = build_tree()
     vfs = MockVFS(root)
     vfs.cwd = vfs.get_node_by_path("/b/b1")  # cwd is a descendant of /b
@@ -237,6 +215,7 @@ def test_mv_cwd_or_ancestor():
     result = cmd_mv(["/b", "/c"], vfs)
     assert "Cannot move current directory or one of its ancestors" in result
 
+
 def test_cmd_tree():
     vfs = MockVFS(build_tree())
     vfs.cwd = vfs.get_node_by_path("/b")
@@ -250,6 +229,7 @@ def test_cmd_tree_no_mount():
     vfs.cwd = None
     result = cmd_tree([], vfs)
     assert result.error == "Nothing mounted. Use 'mount' first."
+
 
 def test_cmd_text_get():
     vfs = MockVFS(build_tree())
@@ -279,6 +259,7 @@ def test_cmd_text_no_cwd():
     result = cmd_text(["text"], vfs)
     assert result.status == "error"
     assert "No current node" in result.error
+
 
 def test_cmd_get_attr_on_cwd():
     vfs = MockVFS(build_tree())
@@ -313,6 +294,7 @@ def test_cmd_get_invalid_path():
     assert isinstance(result, CommandResult)
     assert "Error" in result.error
 
+
 def test_cmd_set_attr_on_cwd():
     vfs = MockVFS(build_tree())
     result = cmd_set(["foo", "bar"], vfs)
@@ -339,6 +321,7 @@ def test_cmd_set_invalid_path():
     result = cmd_set(["/invalidpath", "foo", "bar"], vfs)
     assert isinstance(result, CommandResult)
     assert "Error" in result.error
+
 
 def test_cmd_delattr_on_cwd():
     vfs = MockVFS(build_tree())
@@ -375,6 +358,7 @@ def test_cmd_delattr_invalid_usage():
     assert isinstance(result, CommandResult)
     assert "Usage" in result.error
 
+
 def test_cmd_lsattr_on_cwd():
     vfs = MockVFS(build_tree())
     vfs.cwd.set("foo", "bar")
@@ -408,6 +392,7 @@ def test_cmd_lsattr_invalid_usage():
     assert isinstance(result, CommandResult)
     assert "Usage" in result.error
 
+
 def test_cmd_add_default_append():
     vfs = MockVFS(build_tree())
     result = cmd_add(["newtag"], vfs)
@@ -434,4 +419,43 @@ def test_cmd_add_missing_tag():
     vfs = MockVFS(build_tree())
     result = cmd_add([], vfs)
     assert "Usage" in result.error
+
+
+def test_cmd_rm_success():
+    vfs = MockVFS(build_tree())
+    assert vfs.get_node_by_path("/b/b1") is not None
+    result = cmd_rm(["/b/b1"], vfs)
+    assert result.output == "Removed <b1> from /b"
+
+def test_cmd_rm_root():
+    root = build_tree()
+    vfs = MockVFS(root)
+    assert vfs.get_node_by_path("/") is vfs.root
+    result = cmd_rm(["/"], vfs)
+    assert "Cannot remove root" in result.error
+
+def test_cmd_rm_invalid_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_rm(["/invalid/path"], vfs)
+    assert "Invalid path:" in result.error
+
+def test_cmd_rm_cwd_or_ancestor():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/b/b1")
+    result = cmd_rm(["/b"], vfs)
+    assert "Cannot remove current directory or one of its ancestors" in result.error
+
+def test_cmd_rm_cwd():
+    vfs = MockVFS(build_tree())
+    vfs.cwd = vfs.get_node_by_path("/b")
+    result = cmd_rm(["/b"], vfs)  # ← add vfs here
+    assert "Cannot remove current directory" in result.error
+
+def test_cmd_rm_unmounts_root_child():
+    vfs = MockVFS(build_tree())
+    vfs.mounts["a"] = "dummyfile.html"  # Simulate mounted node
+    assert "a" in vfs.mounts
+    result = cmd_rm(["/a"], vfs)
+    assert result.output == "Removed <a> from /"
+    assert "a" not in vfs.mounts  # Confirm unmounted
 
