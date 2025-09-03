@@ -1,8 +1,7 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv
+from xmsh.control import cmd_cd, cmd_cp, cmd_rm, cmd_mv, CommandResult
 
-from lxml import etree
 
 class MockVFS:
     def __init__(self, root):
@@ -97,7 +96,8 @@ def test_cd_up_twice():
 def test_cd_up_past_root():
     vfs = MockVFS(build_tree())
     result = cmd_cd(["..", "2"], vfs)
-    assert result == "Already at root, cannot go up"
+    assert isinstance(result, CommandResult)
+    assert result.error == "Already at root, cannot go up"
     assert vfs.cwd.tag == "root"
 
 def test_cd_next_sibling():
@@ -117,7 +117,8 @@ def test_cd_prev_sibling():
 def test_cd_invalid_path():
     vfs = MockVFS(build_tree())
     result = cmd_cd(["/nonexistent"], vfs)
-    assert "Error:" in result
+    assert isinstance(result, CommandResult)
+    assert "Error:" in result.error or result.error.startswith("Error")
 
 
 def test_cp_success():

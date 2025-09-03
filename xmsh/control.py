@@ -43,7 +43,7 @@ def cmd_ls(args, vfs):
 def cmd_cd(args, vfs):
     """Change current working node to a specified path."""
     if not args:
-        return "Usage: cd <path> [count]"
+        return CommandResult(error="Usage: cd <path> [count]", status="error")
 
     # Handle special navigation: cd .. 2, cd + 3, cd - 1
     if args[0] in ('..', '+', '-'):
@@ -53,7 +53,7 @@ def cmd_cd(args, vfs):
             try:
                 count = int(args[1])
             except ValueError:
-                return f"Invalid number: {args[1]}"
+                return CommandResult(error=f"Invalid number: {args[1]}", status="error")
 
         current = vfs.cwd
 
@@ -61,33 +61,34 @@ def cmd_cd(args, vfs):
             for _ in range(count):
                 parent = current.getparent()
                 if parent is None:
-                    return "Already at root, cannot go up"
+                    return CommandResult(error="Already at root, cannot go up", status="error")
                 current = parent
 
         elif args[0] == '+':
             for _ in range(count):
                 next_node = current.getnext()
                 if next_node is None:
-                    return "No younger sibling"
+                    return CommandResult(error="No younger sibling", status="error")
                 current = next_node
 
         elif args[0] == '-':
             for _ in range(count):
                 prev_node = current.getprevious()
                 if prev_node is None:
-                    return "No older sibling"
+                    return CommandResult(error="No older sibling", status="error")
                 current = prev_node
 
         vfs.cwd = current
-        return  # Success, no output
+        return None  # Success, no output
 
     # Default: path resolution
     path = args[0]
     try:
         new_cwd = vfs.get_node_by_path(path)
         vfs.cwd = new_cwd
+        return None  # Success, no output
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=f"Error: {e}", status="error")
 
 
 def cmd_tree(args, context):
