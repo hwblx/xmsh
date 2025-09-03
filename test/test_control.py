@@ -1,5 +1,6 @@
 from lxml import etree
-from xmsh.control import cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_save, cmd_find, cmd_add, cmd_lsattr, cmd_delattr, cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.model import VirtualFileSystem
 
 
 class MockVFS:
@@ -488,4 +489,61 @@ def test_cmd_mv_cwd_or_ancestor():
     vfs.cwd = vfs.get_node_by_path("/b/b1")  # cwd is descendant of /b
     result = cmd_mv(["/b", "/a"], vfs)
     assert "Cannot move current directory or one of its ancestors" in result.error
+
+
+def test_cmd_save_default(tmp_path):
+    # Prepare a sample file to mount
+    sample_path = tmp_path / "sample.xml"
+    sample_path.write_text("<root><a/></root>", encoding="utf-8")
+
+    vfs = VirtualFileSystem()
+    vfs.mount("sample", str(sample_path))
+    vfs.cwd = vfs.get_node_by_path("/sample")
+
+    result = cmd_save([], vfs)
+    assert isinstance(result, CommandResult)
+    assert result.status == "ok"
+    assert "Saved 'sample'" in result.output
+    assert sample_path.exists()
+
+def test_cmd_save_raw(tmp_path):
+    sample_path = tmp_path / "sample.xml"
+    sample_path.write_text("<root><a/></root>", encoding="utf-8")
+
+    vfs = VirtualFileSystem()
+    vfs.mount("sample", str(sample_path))
+    vfs.cwd = vfs.get_node_by_path("/sample")
+
+    result = cmd_save(["--raw"], vfs)
+    assert result.status == "ok"
+    assert "Saved 'sample'" in result.output
+
+def test_cmd_save_to_new_filepath(tmp_path):
+    original = tmp_path / "orig.xml"
+    original.write_text("<root><a/></root>", encoding="utf-8")
+
+    newpath = tmp_path / "new.xml"
+
+    vfs = VirtualFileSystem()
+    vfs.mount("sample", str(original))
+    vfs.cwd = vfs.get_node_by_path("/sample")
+
+    result = cmd_save([str(newpath)], vfs)
+    assert result.status == "ok"
+    assert newpath.exists()
+
+def test_cmd_save_error(tmp_path, monkeypatch):
+    sample_path = tmp_path / "sample.xml"
+    sample_path.write_text("<root><a/></root>", encoding="utf-8")
+
+    vfs = VirtualFileSystem()
+    vfs.mount("sample", str(sample_path))
+    vfs.cwd = vfs.get_node_by_path("/sample")
+
+    # Simulate save failing
+    monkeypatch.setattr(vfs, "save", lambda filepath, pretty: (_ for _ in ()).throw(Exception("fail")))
+
+    result = cmd_save([], vfs)
+    assert result.status == "error"
+    assert "Error saving: fail" in result.error
 

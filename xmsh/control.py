@@ -438,10 +438,10 @@ def cmd_save(args, vfs):
         filepath = args_copy[0]
 
     try:
-        result = vfs.save(filepath, pretty=pretty)
-        return result
+        result_msg = vfs.save(filepath, pretty=pretty)
+        return CommandResult(output=result_msg, status="ok")
     except Exception as e:
-        return f"Error saving: {e}"
+        return CommandResult(error=f"Error saving: {e}", status="error")
 
 
 def cmd_print(args, vfs):
