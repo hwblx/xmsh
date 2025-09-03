@@ -509,16 +509,17 @@ def cmd_delattr(args, vfs):
 def cmd_lsattr(args, vfs):
     """List all attributes on node at optional path (defaults to cwd). Usage: attr-list [path]"""
     if len(args) > 1:
-        return "Usage: attr-list [path]"
+        return CommandResult(error="Usage: attr-list [path]", status="error")
 
     path = args[0] if args else None
     try:
         node = vfs.get_node_by_path(path) if path else vfs.cwd
         if not node.attrib:
-            return f"No attributes on node '{node.tag}'"
-        return '\n'.join(f"{k}='{v}'" for k, v in node.attrib.items())
+            return CommandResult(output=f"No attributes on node '{node.tag}'")
+        attrs = '\n'.join(f"{k}='{v}'" for k, v in node.attrib.items())
+        return CommandResult(output=attrs)
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=str(e), status="error")
 
 
 def cmd_pwd(args, vfs):
