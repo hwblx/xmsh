@@ -135,14 +135,15 @@ def cmd_unmount(args, vfs):
 def cmd_mount_url(args, vfs):
     """Mount an XML/HTML document from a URL."""
     if len(args) != 2:
-        return "Usage: mount-url <name> <url>"
+        return CommandResult(error="Usage: mount-url <name> <url>", status="error")
+
     name, url = args
     try:
         vfs.mount_url(name, url)
         vfs.cwd = vfs.get_node_by_path(f"/{name}")
-        return f"Mounted URL {name} at /{name}"
+        return CommandResult(output=f"Mounted URL {name} at /{name}")
     except Exception as e:
-        return f"Error mounting URL: {e}"
+        return CommandResult(error=f"Error mounting URL: {e}", status="error")
 
 
 def cmd_text(args, vfs):
