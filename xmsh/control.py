@@ -122,14 +122,14 @@ def print_tree(element, prefix="", is_last=True, depth=0, max_depth=None):
 def cmd_unmount(args, vfs):
     """Unmount a previously mounted document."""
     if not args:
-        return "Usage: unmount <name>"
+        return CommandResult(error="Usage: unmount <name>", status="error")
 
     name = args[0]
     try:
         vfs.unmount(name)
-        return f"Unmounted '{name}'"
+        return CommandResult(output=f"Unmounted '{name}'")
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=f"Error: {e}", status="error")
 
 
 def cmd_mount_url(args, vfs):
