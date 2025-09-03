@@ -487,7 +487,11 @@ def cmd_lsattr(args, vfs):
 
 
 def cmd_pwd(args, vfs):
-    return vfs.build_path(vfs.cwd)
+    try:
+        cwd = vfs.build_path(vfs.cwd)
+        return CommandResult(output=cwd)
+    except Exception as e:
+        return CommandResult(error=str(e), status="error")
 
 
 def dispatch_command(cmdline: str, vfs) -> tuple[str | None, bool]:
