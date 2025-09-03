@@ -20,14 +20,15 @@ class CommandResult:
 def cmd_mount(args, vfs):
     """Mount an XML/HTML document at a given name."""
     if len(args) != 2:
-        return "Usage: mount <name> <filepath>"
+        return CommandResult(error="Usage: mount <name> <filepath>", status="error")
+
     name, filepath = args
     try:
         vfs.mount(name, filepath)
         vfs.cwd = vfs.get_node_by_path(f"/{name}")
-        return f"Mounted {name} at /{name}"
+        return CommandResult(output=f"Mounted {name} at /{name}")
     except Exception as e:
-        return f"Error mounting: {e}"
+        return CommandResult(error=f"Error mounting: {e}", status="error")
 
 
 def cmd_ls(args, vfs):
