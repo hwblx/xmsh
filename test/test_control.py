@@ -1,6 +1,6 @@
 import pytest
 from lxml import etree
-from xmsh.control import cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
+from xmsh.control import cmd_set, cmd_get, cmd_cd, cmd_cp, cmd_rm, cmd_mv, cmd_tree, cmd_text, CommandResult
 
 
 class MockVFS:
@@ -309,6 +309,33 @@ def test_cmd_get_invalid_usage():
 def test_cmd_get_invalid_path():
     vfs = MockVFS(build_tree())
     result = cmd_get(["/invalidpath", "foo"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Error" in result.error
+
+def test_cmd_set_attr_on_cwd():
+    vfs = MockVFS(build_tree())
+    result = cmd_set(["foo", "bar"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Set attribute 'foo'" in result.output
+    assert vfs.cwd.get("foo") == "bar"
+
+def test_cmd_set_attr_on_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_set(["/b", "baz", "qux"], vfs)
+    node = vfs.get_node_by_path("/b")
+    assert isinstance(result, CommandResult)
+    assert "Set attribute 'baz'" in result.output
+    assert node.get("baz") == "qux"
+
+def test_cmd_set_invalid_usage():
+    vfs = MockVFS(build_tree())
+    result = cmd_set(["only_one_arg"], vfs)
+    assert isinstance(result, CommandResult)
+    assert "Usage" in result.error
+
+def test_cmd_set_invalid_path():
+    vfs = MockVFS(build_tree())
+    result = cmd_set(["/invalidpath", "foo", "bar"], vfs)
     assert isinstance(result, CommandResult)
     assert "Error" in result.error
 

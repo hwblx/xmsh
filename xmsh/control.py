@@ -475,14 +475,14 @@ def cmd_set(args, vfs):
     elif len(args) == 3:
         path, attr_name, attr_value = args
     else:
-        return "Usage: attr-set [path] <attribute_name> <attribute_value>"
+        return CommandResult(error="Usage: attr-set [path] <attribute_name> <attribute_value>", status="error")
 
     try:
         node = vfs.get_node_by_path(path) if path else vfs.cwd
         node.set(attr_name, attr_value)
-        return f"Set attribute '{attr_name}' = '{attr_value}' on node '{node.tag}'"
+        return CommandResult(output=f"Set attribute '{attr_name}' = '{attr_value}' on node '{node.tag}'")
     except Exception as e:
-        return f"Error: {e}"
+        return CommandResult(error=f"Error: {e}", status="error")
 
 
 def cmd_delattr(args, vfs):
